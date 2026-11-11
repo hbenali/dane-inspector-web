@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dane.hbenali.ovh/sitemap.xml

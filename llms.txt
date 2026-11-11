@@ -1,0 +1,8 @@
+# DANE / TLSA Inspector
+
+> Free, single-page tool to inspect DANE TLSA records (RFC 6698, RFC 7671, RFC 7672), check DNSSEC validation, match a certificate against them and generate TLSA records.
+
+Static site (no backend, no build step, no dependencies) at https://dane.hbenali.ovh. Looks up a domain's MX hosts and the TLSA record at _25._tcp.<mx-host>, or the TLSA record of any host and port, via DNS-over-HTTPS (dns.google). Explains usage, selector and matching type, flags usage 0/1 as discouraged for SMTP, and warns when the answer is not DNSSEC-validated (AD flag). A pasted PEM certificate is hashed in the browser with WebCrypto (SHA-256 and SHA-512 of the full certificate and of the SubjectPublicKeyInfo), compared with the TLSA records, and turned into TLSA lines (3 1 1 recommended). The certificate never leaves the browser.
+
+## Pages
+- [DANE / TLSA Inspector](https://dane.hbenali.ovh/): the tool itself. Parameters: ?domain=example.com (mail servers) or ?host=example.com&port=443.

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DANE / TLSA Inspector — Check TLSA Records</title>
+  <meta name="description" content="Free DANE / TLSA record inspector (RFC 6698, RFC 7671, RFC 7672). Look up the TLSA records of a domain\'s mail servers or of any host and port, check DNSSEC validation, match a pasted certificate against them and generate TLSA records.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://dane.hbenali.ovh/">
+
+  <!-- Security (static hosting: no custom HTTP headers, so CSP/referrer are set here; X-Frame-Options/X-Content-Type-Options need a real header and aren't achievable via meta) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://dns.google; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DANE / TLSA Inspector — Check TLSA Records">
+  <meta property="og:description" content="Look up DANE TLSA records, check DNSSEC, match a certificate and generate 3 1 1 records.">
+  <meta property="og:url" content="https://dane.hbenali.ovh/">
+  <meta property="og:site_name" content="DANE / TLSA Inspector">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:image" content="https://dane.hbenali.ovh/favicon.svg">
+  <meta property="og:image:type" content="image/svg+xml">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="DANE / TLSA Inspector — Check TLSA Records">
+  <meta name="twitter:description" content="Look up DANE TLSA records, check DNSSEC, match a certificate and generate 3 1 1 records.">
+  <meta name="twitter:image" content="https://dane.hbenali.ovh/favicon.svg">
+
+  <!-- SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1218" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DANE / TLSA Inspector">
+
+  <!-- dns.google is only hit on-demand after a lookup; certificates never leave the browser -->
+  <link rel="dns-prefetch" href="https://dns.google">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "url": "https://dane.hbenali.ovh/",
+        "name": "DANE / TLSA Inspector",
+        "description": "Free DANE / TLSA record inspector with certificate matching and a TLSA record generator.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://dane.hbenali.ovh/?domain={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "WebApplication",
+        "name": "DANE / TLSA Inspector",
+        "url": "https://dane.hbenali.ovh/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "description": "Inspect DANE TLSA records for a domain's mail servers or any host and port, match a certificate in the browser and generate TLSA records.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    ]
+  }
+  </script>
+
+
+  <link rel="preload" href="/fonts/big-shoulders-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/newsreader-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/site.css">
+</head>
+
+<body>
+<a class="skip" href="#modeSelect">Skip to the tool</a>
+<header class="hero">
+  <div class="wrap">
+    <h1 class="display">
+      <span class="line"><span>DANE</span></span>
+      <span class="line"><span>TLSA inspect &amp; match</span></span>
+    </h1>
+    <p class="lead">See which <strong>certificate a host pins in DNS</strong>, whether DNSSEC vouches for it, and whether your certificate matches.</p>
+  </div>
+</header>
+
+<main>
+  <section class="block wrap" aria-labelledby="lookupTitle">
+    <h2 class="block-title" id="lookupTitle">Look up TLSA records</h2>
+    <p class="block-note">DANE (RFC 6698, RFC 7671) publishes a hash of a server's certificate or key in a TLSA record, so clients need not trust a public CA. For email it is profiled in RFC 7672. <strong>It is only meaningful when the DNS answer is DNSSEC-validated.</strong></p>
+
+    <form id="lookupForm" class="lookup-form" novalidate>
+      <div class="gen-grid">
+        <div class="gen-row">
+          <label class="gen-label" for="modeSelect">What to look up</label>
+          <select id="modeSelect">
+            <option value="mail">Mail servers of a domain (port 25)</option>
+            <option value="host">Custom host and port</option>
+          </select>
+          <span class="hint">mail mode finds the MX records, then the TLSA record at _25._tcp.&lt;mx-host&gt;</span>
+        </div>
+        <div class="gen-row" id="rowDomain">
+          <label class="gen-label" for="domainInput">Domain name</label>
+          <input type="text" id="domainInput" placeholder="e.g. mailbox.org" value="mailbox.org" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="gen-row" id="rowHost" hidden>
+          <label class="gen-label" for="hostInput">Host name</label>
+          <input type="text" id="hostInput" placeholder="e.g. www.example.com" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="gen-row" id="rowPort" hidden>
+          <label class="gen-label" for="portInput">Port</label>
+          <input type="number" id="portInput" min="1" max="65535" value="443" inputmode="numeric">
+          <span class="hint">TLSA name is _&lt;port&gt;._tcp.&lt;host&gt; (443 for HTTPS, 25 for SMTP, 465/587 for submission)</span>
+        </div>
+        <div class="actions">
+          <button class="btn" id="checkBtn" type="submit">
+            <span id="btnText">Look up TLSA</span>
+            <span id="btnLoader" hidden></span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="result-area" id="resultContainer" aria-live="polite">
+      <div class="state empty empty-state" id="placeholderState">
+        <p>Choose what to look up and click "Look up TLSA".<br>Only DNS queries go to dns.google; nothing else leaves your browser.</p>
+      </div>
+      <div id="recordsContainer" hidden></div>
+      <div id="errorContainer" hidden></div>
+    </div>
+  </section>
+
+  <section class="block wrap" aria-labelledby="matchTitle">
+    <h2 class="block-title" id="matchTitle">Match a certificate</h2>
+    <p class="block-note">Paste one or more PEM certificates. The page hashes them with WebCrypto in your browser and compares the result with the TLSA records of the last lookup. The certificate is never uploaded.</p>
+    <div class="gen-grid">
+      <div class="gen-row">
+        <label class="gen-label" for="pemInput">PEM certificate(s)</label>
+        <textarea id="pemInput" rows="9" spellcheck="false" autocomplete="off" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
+      </div>
+      <div class="field-error" id="pemError" role="alert"></div>
+      <div class="actions">
+        <button id="matchBtn" class="btn" type="button">Compute and match</button>
+        <button id="pemClearBtn" class="btn quiet" type="button">Clear</button>
+      </div>
+      <div id="matchOutput" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="block wrap generator-section" aria-labelledby="genTitle">
+    <h2 class="block-title" id="genTitle">TLSA record generator</h2>
+    <p class="block-note">Turns the pasted PEM above into TLSA lines. <strong>3 1 1</strong> (DANE-EE, public key, SHA-256) is the recommended choice: it survives certificate renewals as long as the key is reused.</p>
+    <div class="gen-grid">
+      <div class="gen-row">
+        <label class="gen-label" for="genHost">Host name</label>
+        <input type="text" id="genHost" placeholder="mail.example.com" spellcheck="false" autocomplete="off">
+        <span class="hint">filled from the last lookup; the record name is built from it and the port</span>
+      </div>
+      <div class="gen-row">
+        <label class="gen-label" for="genPort">Port</label>
+        <input type="number" id="genPort" min="1" max="65535" value="25" inputmode="numeric">
+      </div>
+      <div class="gen-row">
+        <label class="gen-label" for="genUsage">Certificate usage</label>
+        <select id="genUsage">
+          <option value="3" selected>3 DANE-EE (recommended)</option>
+          <option value="2">2 DANE-TA</option>
+          <option value="1">1 PKIX-EE (discouraged for SMTP)</option>
+          <option value="0">0 PKIX-TA (discouraged for SMTP)</option>
+        </select>
+      </div>
+      <div class="gen-row">
+        <label class="gen-label" for="genSelector">Selector</label>
+        <select id="genSelector">
+          <option value="1" selected>1 SPKI (public key, recommended)</option>
+          <option value="0">0 full certificate</option>
+        </select>
+      </div>
+      <div class="gen-row">
+        <label class="gen-label" for="genMatching">Matching type</label>
+        <select id="genMatching">
+          <option value="1" selected>1 SHA-256 (recommended)</option>
+          <option value="2">2 SHA-512</option>
+          <option value="0">0 exact data (no hash)</option>
+        </select>
+      </div>
+      <div class="field-error" id="genError" role="alert"></div>
+      <div class="actions">
+        <button id="genBtn" class="btn" type="button">Generate TLSA lines</button>
+      </div>
+      <div id="genOutput" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="block wrap" aria-labelledby="limitsTitle">
+    <h2 class="block-title" id="limitsTitle">What this page cannot do</h2>
+    <ul class="checks">
+      <li><span class="chk info">note</span><span>A browser cannot open a TCP connection, so it cannot fetch the live certificate a server presents. Paste the PEM yourself (for example from <code>openssl s_client -connect host:25 -starttls smtp</code>).</span></li>
+      <li><span class="chk info">note</span><span>The DNSSEC verdict is the resolver's: the AD flag from dns.google. This page does not validate signatures itself.</span></li>
+      <li><span class="chk info">note</span><span>Matching compares hashes only. It does not validate the certificate chain, names or expiry.</span></li>
+    </ul>
+  </section>
+</main>
+
+<div class="foot">
+  <footer>
+    <span>using <strong>Google DNS over HTTPS</strong></span>
+    <span>DANE TLSA lookup, certificate match, record generator</span>
+    <a href="https://hbenali.ovh" target="_blank" rel="noopener noreferrer">hbenali.ovh</a>
+  </footer>
+</div>
+
+<script src="/app.js" defer></script>
+</body>
+</html>
